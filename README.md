@@ -13,14 +13,16 @@ During this session, we'll explore together the capabilities of Docker on Window
 ## Step 1:  Setup Environment
 
 RDP in to your AWS instance.  
-User: `playground`  
+User: `Administrator`  
 Pass: `Playground123`  
 
 Open a powershell window and run:  
 `docker --version`  
 
-If you get an error about a pipe run:  
-`Stop-Service docker; dockerd --unregister-service; dockerd -H npipe:// -H 0.0.0.0:2375 --register-service; Start-Service docker;`
+I have setup the Docker daemon to listen on both pipe and TCP, but if you have an error about a pipe then run this:  
+`Stop-Service docker; dockerd --unregister-service; dockerd -H npipe:// -H 0.0.0.0:2375 --register-service; Start-Service docker;`  
+If you do the above but Docker fails to restart, a temporary fix is to restart the vm: `Restart-Computer -Force`  
+Wait a few minutes before logging in via RDP and trying `docker --version` again. 
 
 ### Step 2: Start an example Docker container  
 See what Docker images are avaliable:  
@@ -33,17 +35,19 @@ List all containers:
 `docker ps -a`  
 
 ## Step 3: Build an IIS Docker image using a DockerFile
-Open notepad and edit the sample index.html page at: `C:\docker\iis\content\index.html`  
-Open notepad and create a file called 'DockerFile' and save it as: `C:\docker\iis\DockerFile`  
+Open notepad and edit the sample index.html page at: `notepad.exe C:\docker\iis\content\index.html`  
+Open notepad and create a file called 'DockerFile' and save it as: `notepad.exe C:\docker\iis\DockerFile`  
 
 Copy the following contents to the DockerFile:  
 ```
 FROM microsoft/iis:nanoserver
+
 RUN mkdir C:\site
-RUN powershell -NoProfile -Command \
-Import-module IISAdministration; \
-New-IISSite -Name "Site" -PhysicalPath C:\site -BindingInformation "*:8000:"
+
+RUN powershell -NoProfile -Command Import-module IISAdministration; New-IISSite -Name "Site" -PhysicalPath C:\site -BindingInformation "*:8000:"
+
 EXPOSE 8000
+
 ADD content/ /site
 ```
 
@@ -65,7 +69,7 @@ Open Internet Explorer and navigate to:
 ## Stop Here
 
 ## Step 5: Create a Nginx load balancer Docker image
-Open notepad and create a file called 'DockerFile' and save it as: `C:\docker\nginx\DockerFile`  
+Open notepad and create a file called 'DockerFile' and save it as: `notepad.exe C:\docker\nginx\DockerFile`  
 Copy the following contents to the DockerFile:
 ```
 FROM microsoft/windowsservercore
@@ -94,7 +98,7 @@ Check the load balancer config file copied correctly:
 `cd c:\nginx\`  
 `ls`  
 Run Nginx with the load balancer config:  
-``.\nginx.exe -c .\conf\nginx.conf`  
+`.\nginx.exe -c .\conf\nginx.conf`  
 
 Open a new powershell window and inspect the Nginx container:  
 `docker inspect -f "{{ .NetworkSettings.Networks.nat.IPAddress }}" test-nginx-lb-container`  
@@ -102,7 +106,7 @@ Open Internet Explorer and navigate to:
 `http://<your-container-ip>`  
 
 ## Step 7: Configure the load balancer with the Docker cp command
-Open notepad and edit the Nginx config file at: `C:\docker\nginx\content\lb.conf`  
+Open notepad and edit the Nginx config file at: `notepad.exe C:\docker\nginx\content\lb.conf`  
 Ensure you save the file nto as a .txt file.  
 Copy the new config file to the Nginx container:  
 `docker cp C:\docker\nginx\content\lb.conf test-nginx-lb-container:/nginx/lb.conf`  
@@ -113,8 +117,9 @@ It will probably exit out of the remote powershell, so open it again:
 `docker exec -i test-nginx-lb-container powershell`  
 `cd .\nginx`  
 `.\nginx.exe -s quit`  
-`.\nginx.exe -s reload`   
-### ^
+
+Now lets start the Nginx server using our load balancer config:  
+`.\nginx.exe -c .\lb.conf`
 
 On the other powershell window and inspect the Nginx container:  
 `docker inspect -f "{{ .NetworkSettings.Networks.nat.IPAddress }}" test-nginx-lb-container`  
@@ -124,7 +129,7 @@ Open Internet Explorer and navigate to:
 ## Stop Here
 
 ## Step 8: Start a second IIS container to handle the extra load
-Open notepad and edit the sample index.html page at: `C:\docker\iis\content\index.html`  
+Open notepad and edit the sample index.html page at: `notepad.exe C:\docker\iis\content\index.html`  
 Re-build the Docker image:  
 `docker build -t test-iis-image C:\docker\iis\`  
 Run the IIS image as a container:  
@@ -137,7 +142,7 @@ Open Internet Explorer and navigate to:
 `http://<your-container-ip>:8000`  
 
 ## Step 9: Update the load balancer to use both IIS containers
-Open notepad and edit the Nginx config file at: `C:\docker\nginx\content\lb.conf`  
+Open notepad and edit the Nginx config file at: `notepad.exe C:\docker\nginx\content\lb.conf`  
 Ensure you save the file nto as a .txt file.  
 Copy the new config file to the Nginx container:  
 `docker cp C:\docker\nginx\content\lb.conf test-nginx-lb-container:/nginx/lb.conf`  
@@ -152,6 +157,8 @@ Re-open Internet Explorer and refresh the load balancer tab a few times:
 `http://<your-container-ip>`  
 
 # Help
+
+### Don't be afraid to ask!
 
 ### If you need to delete a container
 `docker stop container-id-or-name`  
